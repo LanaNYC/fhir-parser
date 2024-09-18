@@ -9,7 +9,7 @@
 
 import sys
 
-import settings
+from Default import settings
 import fhirloader
 import fhirspec
 

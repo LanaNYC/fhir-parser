@@ -79,6 +79,8 @@ class FHIRStructureDefinitionRenderer(FHIRRenderer):
                 tgt = os.path.join(target_dir, os.path.basename(filepath))
                 logger.info("Copying manual profiles in {} to {}".format(os.path.basename(filepath), tgt))
                 shutil.copyfile(filepath, tgt)
+
+
     
     def render(self):
         for profile in self.spec.writable_profiles():
@@ -102,8 +104,51 @@ class FHIRStructureDefinitionRenderer(FHIRRenderer):
             target_path = os.path.join(self.settings.tpl_resource_target, target_name)
             
             self.do_render(data, source_path, target_path)
+
+            # Write additional content if needed (e.g., for `Bundle`)
+            for klass in classes:
+                if klass.name == "Bundle":
+                    self.write_bundle_generator_methods(target_path, klass)
+
         self.copy_files(os.path.dirname(target_path))
 
+    def write_bundle_generator_methods(self, target_path, klass):
+        """Write additional generator methods to the `Bundle` class."""
+        with open(target_path, 'r') as file:
+            lines = file.readlines()
+
+        # Find where to insert the generator methods, just before elementProperties
+        insert_index = None
+        for i, line in enumerate(lines):
+            if "def elementProperties" in line:
+                insert_index = i
+                break
+
+        # The generator methods to be inserted
+        generator_methods = [
+            "    def __iter__(self):\n",
+            "        if self.entry is None:\n",
+            "            self._entry_iter = iter([])\n",
+            "        else:\n",
+            "            self._entry_iter = iter(self.entry)\n",
+            "        return self\n",
+            "\n",
+            "",
+            "    def __next__(self):\n",
+            "        if not hasattr(self, '_entry_iter'):\n",
+            "            self.__iter__()\n",
+            "        return next(self._entry_iter)\n",
+            "\n",
+            "",
+        ]
+
+        # Insert the generator methods just before the elementProperties method
+        if insert_index is not None:
+            lines = lines[:insert_index] + generator_methods + lines[insert_index:]
+
+        # Write the modified content back to the file
+        with open(target_path, 'w') as file:
+            file.writelines(lines)
 
 class FHIRFactoryRenderer(FHIRRenderer):
     """ Write factories for FHIR classes.

@@ -191,8 +191,7 @@ class FHIRClass(object):
     @property
     def resource_type_enum(self):
         return self.resource_type[:1].lower() + self.resource_type[1:]
-    
-    
+
     def __repr__(self):
         return f"<{self.__class__.__name__}> path: {self.path}, name: {self.name}, resourceType: {self.resource_type}"
 
