@@ -43,6 +43,8 @@ class FHIRClass(object):
         self.formal = element.definition.formal
         self.properties = []
         self.expanded_nonoptionals = {}
+        self.class_lines = []
+
     
     def add_property(self, prop):
         """ Add a property to the receiver.
@@ -191,7 +193,37 @@ class FHIRClass(object):
     @property
     def resource_type_enum(self):
         return self.resource_type[:1].lower() + self.resource_type[1:]
-    
+
+    def write_line(self, line):
+        """ Appends a line to the class definition. """
+        self.class_lines.append(line)
+
+    def add_generator_methods_if_bundle(self):
+        """ Add __iter__ and __next__ methods if this is the Bundle class. """
+
+        if self.name == "Bundle":
+            # Write __iter__ method directly into the class definition
+            self.write_line("""
+        def __iter__(self):
+            if self.entry is None:
+                self._entry_iter = iter([])
+            else:
+                self._entry_iter = iter(self.entry)
+            return self
+            """)
+
+            # Write __next__ method directly into the class definition
+            self.write_line("""
+        def __next__(self):
+            if not hasattr(self, '_entry_iter'):
+                self.__iter__()  
+            return next(self._entry_iter) 
+            """)
+
+    def finalize_class(self):
+        """ Generate the class as a string or write to a file. """
+        # Join all the lines into a single string or write to a file
+        return "\n".join(self.class_lines)
     
     def __repr__(self):
         return f"<{self.__class__.__name__}> path: {self.path}, name: {self.name}, resourceType: {self.resource_type}"
